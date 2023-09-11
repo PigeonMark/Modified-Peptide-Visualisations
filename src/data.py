@@ -10,6 +10,7 @@ def read_file(filepath, filetype='csv', sep=',', index_col=0):
         df = pd.read_csv(open(filepath, 'r'), sep=sep, index_col=index_col)
     else:
         raise NotImplementedError("Only csv files are supported right now")
+    df = df.reset_index(drop=True)
     return df
 
 
