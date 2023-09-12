@@ -1,5 +1,5 @@
 import pandas as pd
-import pyteomics.proforma
+from pyteomics.proforma import parse
 
 
 # TODO: support more filetypes
@@ -12,20 +12,43 @@ def read_file(filepath, filetype='csv', sep=',', index_col=0):
     return df
 
 
-def parse_modifications(df, mod_seq_col, proforma_col='proforma', unmod_seq_col='unmodified_sequence', remove_old=True):
-    def extract_unmod_seq(p):
-        return ''.join([a[0] for a in p[0]])
+def parse_modifications(df, mod_seq_col, mod_dict_col='mod_dict', unmod_seq_col='unmodified_sequence'):
+    mod_id_to_name = {}
 
-    df[proforma_col] = df[mod_seq_col].apply(pyteomics.proforma.parse)
-    df[unmod_seq_col] = df[proforma_col].apply(extract_unmod_seq)
+    # TODO: optionally compute mass as well, this will probably take more time
+    def parse_mod_seq(s):
+        seq, additional_info = parse(s[mod_seq_col])
+        mod_dict = {}
+        unmod_seq = ''
+        for i, t in enumerate(seq):
+            unmod_seq += t[0]
+            if t[1] is not None:
+                id = t[1][0].id
+                mod_dict[i] = id
+                if id not in mod_id_to_name:
+                    mod_id_to_name[id] = t[1][0].name
 
-    if remove_old:
-        del df[mod_seq_col]
+        n_term = additional_info['n_term']
+        if n_term is not None:
+            id = n_term[0].id
+            mod_dict['n_term'] = id
+            if id not in mod_id_to_name:
+                mod_id_to_name[id] = n_term[0].name
 
-    return df
+        c_term = additional_info['c_term']
+        if c_term is not None:
+            id = c_term[0].id
+            mod_dict['c_term'] = id
+            if id not in mod_id_to_name:
+                mod_id_to_name[id] = c_term[0].name
+        return mod_dict, unmod_seq
+
+    df[[mod_dict_col, unmod_seq_col]] = df.apply(parse_mod_seq, axis=1, result_type="expand")
+
+    return df, mod_id_to_name
 
 
-def merge_duplicates(df, how, col='proforma', to_merge=None, merge_val_col=None):
+def merge_duplicates(df, how, col='modified_sequence', to_merge=None, merge_val_col=None):
     """
     Merge duplicate records based on `col`.
     :param df: Dataframe to merge the records from
