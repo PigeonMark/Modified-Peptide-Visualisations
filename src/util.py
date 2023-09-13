@@ -8,11 +8,11 @@ def add_length(df, len_col='length', unmod_seq_col='unmodified_sequence'):
 
 def split_mod_unmod(df, mod_dict_col='mod_dict'):
     num_mods = df[mod_dict_col].str.len()
-    return df[num_mods > 0], df[num_mods == 0]
+    return {'mod': df[num_mods > 0], 'unmod': df[num_mods == 0]}
 
 
 def split_col(df, col_name):
-    return [d for _, d in df.groupby(col_name)]
+    return {k: d for k, d in df.groupby(col_name)}
 
 
 def has_mod(mod_dict, mod):
@@ -21,7 +21,6 @@ def has_mod(mod_dict, mod):
 
 def split_mods(df, mod_id_to_name_dict, mod_dict_col='mod_dict', single_mod_only=True,
                keep_same_unmodified_sequence=True, unmod_seq_col='unmodified_sequence'):
-
     if single_mod_only:
         df = df[df[mod_dict_col].str.len() <= 1]
 
@@ -51,3 +50,10 @@ def split(df, split_type, mod_id_to_name_dict=None, mod_dict_col='mod_dict', sin
         raise NotImplementedError(f'Unexpected value for split_type: {split_type}')
 
     return ret
+
+
+def subsample_df(df, subsample):
+    if len(df) > subsample:
+        df = df.sample(n=subsample)
+    return df
+
